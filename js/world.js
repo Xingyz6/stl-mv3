@@ -140,7 +140,7 @@ window.WORLD = (function () {
     const hipY = footY - h * (0.47 - crouch * 0.17);
     const shY = hipY - h * 0.30;
     ctx.save();
-    ctx.strokeStyle = rgba('200,240,225', 0.5);
+    ctx.strokeStyle = rgba('210,248,232', 0.72);
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -148,7 +148,7 @@ window.WORLD = (function () {
     ctx.quadraticCurveTo(x + h * 0.09, hipY - h * 0.04, x + h * 0.055, hipY + h * 0.02);
     ctx.stroke();
     // 头顶边
-    ctx.strokeStyle = rgba('200,240,225', 0.42);
+    ctx.strokeStyle = rgba('210,248,232', 0.6);
     ctx.beginPath();
     ctx.arc(x, shY - h * 0.06 - h * 0.058 * 0.5, h * 0.058, -1.2, 0.9);
     ctx.stroke();
@@ -207,17 +207,48 @@ window.WORLD = (function () {
     ctx.fillStyle = rgba(C.warm, 0.10);
     ctx.fillRect(W * 0.34, H * 0.30, 4, H * 0.40);
 
-    // 地板线
-    ctx.strokeStyle = rgba(C.cold, 0.05);
+    // 墙面竖纹（墙纸接缝）
+    ctx.strokeStyle = rgba(C.cold, 0.045);
     ctx.lineWidth = 1;
-    for (let i = 0; i < 5; i++) {
-      const y = H * 0.70 + i * H * 0.06;
+    for (let i = 0; i < 14; i++) {
+      const x = W * (i / 14);
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H * 0.70); ctx.stroke();
+    }
+    // 地板透视：横线 + 纵线收向消失点
+    const vpx = W * 0.5, vpy = H * 0.70;
+    ctx.strokeStyle = rgba(C.cold, 0.055);
+    for (let i = 1; i <= 5; i++) {
+      const y = vpy + Math.pow(i / 5, 2.0) * (H - vpy);
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
+    for (let i = -7; i <= 7; i++) {
+      ctx.beginPath();
+      ctx.moveTo(vpx + i * W * 0.055, vpy);
+      ctx.lineTo(vpx + i * W * 0.28, H);
+      ctx.stroke();
+    }
+    // 前景：左侧门框（深色竖带）+ 右侧垂下的窗帘
+    ctx.fillStyle = '#040908';
+    ctx.fillRect(0, 0, W * 0.055, H);
+    ctx.fillStyle = '#0A1411';
+    ctx.beginPath();
+    ctx.moveTo(W * 0.93, 0);
+    ctx.quadraticCurveTo(W * 0.90, H * 0.45, W * 0.945, H);
+    ctx.lineTo(W, H); ctx.lineTo(W, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = rgba(C.cold, 0.08);
+    ctx.beginPath();
+    ctx.moveTo(W * 0.93, 0); ctx.quadraticCurveTo(W * 0.90, H * 0.45, W * 0.945, H);
+    ctx.stroke();
   }
 
   function street(t, lv) {
-    bg('#060B09', '#020403');
+    // 天空：上暗下亮（地平线附近最亮）
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.62);
+    sky.addColorStop(0, '#050A08');
+    sky.addColorStop(1, '#16302A');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H * 0.62);
     const HOR = H * 0.62;
 
     // 建筑
@@ -248,8 +279,21 @@ window.WORLD = (function () {
     haze(LX, LY, W * 0.24, C.warm, 0.55);
 
     // 地面
-    ctx.fillStyle = '#07100C';
+    ctx.fillStyle = '#16302A';
     ctx.fillRect(0, HOR, W, H - HOR);
+    const gr = ctx.createLinearGradient(0, HOR, 0, H);
+    gr.addColorStop(0, 'rgba(6,14,12,0)');
+    gr.addColorStop(0.4, 'rgba(4,10,8,.75)');
+    gr.addColorStop(1, 'rgba(2,5,4,.95)');
+    ctx.fillStyle = gr;
+    ctx.fillRect(0, HOR, W, H - HOR);
+    // 雾带压在地面之后
+    const fog = ctx.createLinearGradient(0, HOR - H * 0.10, 0, HOR + H * 0.06);
+    fog.addColorStop(0, 'rgba(22,48,42,0)');
+    fog.addColorStop(0.6, 'rgba(22,48,42,.55)');
+    fog.addColorStop(1, 'rgba(22,48,42,0)');
+    ctx.fillStyle = fog;
+    ctx.fillRect(0, HOR - H * 0.10, W, H * 0.16);
 
     // 行人（脚是干的，各自走路）
     const walkers = [
@@ -274,6 +318,15 @@ window.WORLD = (function () {
     ctx.lineWidth = 3;
     ctx.strokeRect(lx, ly, lw, lh);
 
+    // 内壁金属板分缝
+    ctx.strokeStyle = rgba(C.cold, 0.05);
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      ctx.beginPath(); ctx.moveTo(lx, ly + lh * i / 4); ctx.lineTo(lx + lw, ly + lh * i / 4); ctx.stroke();
+    }
+    for (let i = 1; i < 3; i++) {
+      ctx.beginPath(); ctx.moveTo(lx + lw * i / 3, ly); ctx.lineTo(lx + lw * i / 3, ly + lh); ctx.stroke();
+    }
     // 顶灯
     haze(lx + lw / 2, ly + h0(0.06), W * 0.26, '220,235,225', 0.16);
     function h0(k) { return lh * k; }
@@ -495,9 +548,10 @@ window.WORLD = (function () {
 
     // 水
     if (lv > 0.01) {
-      let wy = H * 0.88 - lv * H * 0.38;
-      if (ph.id === 'under' || ph.id === 'light') wy = H * 0.10 - (lv - 1) * H * 0.40;
-      wy = clamp(wy, -H * 0.4, H * 0.95);
+      // level 以「身位」计：0 = 脚底，1 = 头顶
+      let wy = py - lv * phh;
+      if (ph.id === 'under' || ph.id === 'light') wy = py - lv * phh * 1.15;
+      wy = clamp(wy, -H * 0.6, H * 0.95);
       waterBody(t, Math.max(wy, 0), lv);
       if (wy > 0) waterSurface(t, wy, lv, 1);
 
